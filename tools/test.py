@@ -12,7 +12,7 @@ from utils.logger import setup_logger
 
 
 def main():
-    parser = argparse.ArgumentParser(description="yolov5 with ReID Baseline Inference")
+    parser = argparse.ArgumentParser(description="yolov5 with vehicle ReID Baseline Inference")
     parser.add_argument(
         "--config_file", default=r"./configs/softmax_triplet.yml", help="path to config file", type=str
     )
@@ -35,7 +35,7 @@ def main():
     if output_dir and not os.path.exists(output_dir):
         mkdir(output_dir)
 
-    logger = setup_logger("yolov5 reid_baseline", output_dir, 0)
+    logger = setup_logger("yolov5 vehicle ReID baseline", output_dir, 0)
     logger.info("Using {} GPUS".format(num_gpus))
     logger.info(args)
 
@@ -54,7 +54,7 @@ def main():
     model = build_model(cfg, num_classes)
     model.load_param(cfg.TEST.WEIGHT)
 
-    inference(cfg, model, val_loader, num_query)
+    inference(cfg, model, val_loader, num_query, logger)
 
 
 if __name__ == '__main__':
