@@ -36,7 +36,7 @@ _C.MODEL.NECK = 'bnneck'
 # -----------------------------------------------------------------------------
 _C.INPUT = CN()
 # Size of the image during test
-_C.INPUT.SIZE_TEST = [128, 128]
+_C.INPUT.SIZE_TEST = [224, 224]
 # Values to be used for image normalization
 _C.INPUT.PIXEL_MEAN = [0.485, 0.456, 0.406]
 # Values to be used for image normalization
