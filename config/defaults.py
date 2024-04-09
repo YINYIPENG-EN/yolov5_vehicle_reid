@@ -26,9 +26,9 @@ _C.MODEL.IF_LABELSMOOTH = 'on'
 # -----------------------------------------------------------------------------
 _C.INPUT = CN()
 # Size of the image during training
-_C.INPUT.SIZE_TRAIN = [128, 128]
+_C.INPUT.SIZE_TRAIN = [224, 224]
 # Size of the image during test
-_C.INPUT.SIZE_TEST = [128, 128]
+_C.INPUT.SIZE_TEST = [224, 224]
 # Random probability for image horizontal flip
 _C.INPUT.PROB = 0.5
 # Random probability for random erasing
