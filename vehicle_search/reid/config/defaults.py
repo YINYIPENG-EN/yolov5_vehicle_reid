@@ -36,7 +36,7 @@ _C.MODEL.NECK = 'bnneck'
 # -----------------------------------------------------------------------------
 _C.INPUT = CN()
 # Size of the image during test
-_C.INPUT.SIZE_TEST = [224, 224]
+_C.INPUT.SIZE_TEST = [128,256]
 # Values to be used for image normalization
 _C.INPUT.PIXEL_MEAN = [0.485, 0.456, 0.406]
 # Values to be used for image normalization
@@ -68,7 +68,7 @@ _C.TEST.IMS_PER_BATCH = 128
 # If test with re-ranking, options: 'yes','no'
 _C.TEST.RE_RANKING = 'no'
 # Path to trained model
-_C.TEST.WEIGHT = "weights/mAP_36.5%.pth"
+_C.TEST.WEIGHT = "weights/mAP_79.9%_model_resnet50_ibn_a.pth"
 # Which feature of BNNeck to be used for test, before or after BNNneck, options: 'before' or 'after'
 _C.TEST.NECK_FEAT = 'after'
 # Whether feature is nomalized before test, if yes, it is equivalent to cosine distance
