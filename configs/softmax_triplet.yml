@@ -3,7 +3,7 @@ MODEL:
   IF_LABELSMOOTH: 'on'
 
 INPUT:
-  SIZE_TRAIN: [128,256]
+  SIZE_TRAIN: [128, 256]
   SIZE_TEST: [128, 256]
   PROB: 0.5 # random horizontal flip
   RE_PROB: 0.5 # random erasing
@@ -36,9 +36,9 @@ SOLVER:
   BIAS_LR_FACTOR: 1
   WEIGHT_DECAY: 0.0005
   WEIGHT_DECAY_BIAS: 0.0005
-  IMS_PER_BATCH: 8
+  IMS_PER_BATCH: 32
 
-  STEPS: [25, 40, 60]
+  STEPS: [10,20,40, 50, 70, 80, 90, 100, 110]
   GAMMA: 0.1
 
   WARMUP_FACTOR: 0.01
@@ -50,9 +50,11 @@ SOLVER:
   EVAL_PERIOD: 1
 
 TEST:
-  IMS_PER_BATCH: 4
+  IMS_PER_BATCH: 16
   RE_RANKING: 'no'
   WEIGHT: "path"
   FEAT_NORM: 'yes'
 
 OUTPUT_DIR: "/logs"
+
+
