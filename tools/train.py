@@ -13,13 +13,11 @@ from layers import make_loss
 from solver import make_optimizer, WarmupMultiStepLR
 from loguru import logger
 
-
 def train(cfg, args):
     # prepare dataset
     train_loader, val_loader, num_query, num_classes = make_data_loader(cfg)   # 加载数据集
     # prepare model  模型初始化
     model = build_model(args, num_classes)
-
     if not args.IF_WITH_CENTER:
         print('Train without center loss, the loss type is', cfg.MODEL.METRIC_LOSS_TYPE)  # triplet 三元组损失函数
         optimizer = make_optimizer(cfg, model)  # 优化器
@@ -27,17 +25,20 @@ def train(cfg, args):
         if args.resume:
             path_to_optimizer = args.weights.replace('model', 'optimizer')
             optimizer_dict = torch.load(path_to_optimizer)
-            optimizer.load_state_dict(optimizer_dict['optimizer_state'])
-            for param_group in optimizer.param_groups:
-                param_group['initial_lr'] = optimizer_dict['lr']
+            optimizer_dict = optimizer_dict.state_dict()
+            optimizer.load_state_dict(optimizer_dict)
+            for state in optimizer.state.values():
+                for k, v in state.items():
+                    if torch.is_tensor(v):
+                        state[k] = v.cuda()
         if args.pretrain_choice == 'imagenet':
-            start_epoch = 0 if not args.resume else optimizer_dict['epoch']
+            start_epoch = 0 if not args.resume else eval(args.weights.split('_')[1])
             scheduler = WarmupMultiStepLR(optimizer, cfg.SOLVER.STEPS, cfg.SOLVER.GAMMA, cfg.SOLVER.WARMUP_FACTOR,
                                           cfg.SOLVER.WARMUP_ITERS, cfg.SOLVER.WARMUP_METHOD)
         else:
             print('Only support pretrain_choice for imagenet and self, but got {}'.format(args.pretrain_choice))
-        if args.resume:
-            scheduler.load_state_dict(optimizer_dict['scheduler'])
+        # if args.resume:
+        #     scheduler.load_state_dict(optimizer_dict['scheduler'])
         logger.info('ready train...')
         do_train(
             cfg,
@@ -51,6 +52,68 @@ def train(cfg, args):
             start_epoch,  # add for using self trained model
             args
         )
+
+    # elif args.IF_WITH_CENTER:
+    #     print('Train with center loss, the loss type is', cfg.MODEL.METRIC_LOSS_TYPE)
+    #     loss_func, center_criterion = make_loss_with_center(cfg, num_classes, args)  # modified by gu
+    #     optimizer, optimizer_center = make_optimizer_with_center(cfg, model, center_criterion)
+    #
+    #     arguments = {}
+    #     if args.pretrain_choice == 'imagenet':
+    #         start_epoch = eval('weights/resnet50-19c8e357.pth')
+    #         print('Start epoch:', start_epoch)
+    #         path_to_optimizer = args.weights.replace('model', 'optimizer')
+    #         print('Path to the checkpoint of optimizer:', path_to_optimizer)
+    #         path_to_center_param = args.weights.replace('model', 'center_param')
+    #         print('Path to the checkpoint of center_param:', path_to_center_param)
+    #         path_to_optimizer_center = args.weights.replace('model', 'optimizer_center')
+    #         print('Path to the checkpoint of optimizer_center:', path_to_optimizer_center)
+    #
+    #         model_dict = model.state_dict()
+    #         pretrained_dict = torch.load(args.weights)
+    #         pretrained_dict = {k: v for k, v in pretrained_dict.items() if
+    #                            k in model_dict.keys() == pretrained_dict.keys()}
+    #         model_dict.update(pretrained_dict)
+    #         model.load_state_dict(model_dict)
+    #
+    #         optimizer_dict = optimizer.state_dict()
+    #         pretrained_dict_optimizer = torch.load(path_to_optimizer)
+    #         pretrained_dict_optimizer = {k: v for k, v in pretrained_dict_optimizer.items() if
+    #                            k in optimizer_dict.keys() == pretrained_dict_optimizer.keys()}
+    #         optimizer_dict.update(pretrained_dict_optimizer)
+    #         optimizer.load_state_dict(optimizer_dict)
+    #
+    #         center_dict = model.state_dict()
+    #         pretrained_dict_center = torch.load(args.weights)
+    #         pretrained_dict_center = {k: v for k, v in pretrained_dict_center.items() if
+    #                            k in center_dict.keys() == pretrained_dict_center.keys()}
+    #         center_dict.update(pretrained_dict_center)
+    #         center_criterion.load_state_dict(center_dict)
+    #
+    #         optimizer_center.load_state_dict(torch.load(path_to_optimizer_center))
+    #         scheduler = WarmupMultiStepLR(optimizer, cfg.SOLVER.STEPS, cfg.SOLVER.GAMMA, cfg.SOLVER.WARMUP_FACTOR,
+    #                                       cfg.SOLVER.WARMUP_ITERS, cfg.SOLVER.WARMUP_METHOD, start_epoch)
+    #     elif args.pretrain_choice == 'imagenet':
+    #         start_epoch = 0
+    #         scheduler = WarmupMultiStepLR(optimizer, cfg.SOLVER.STEPS, cfg.SOLVER.GAMMA, cfg.SOLVER.WARMUP_FACTOR,
+    #                                       cfg.SOLVER.WARMUP_ITERS, cfg.SOLVER.WARMUP_METHOD)
+    #     else:
+    #         print('Only support pretrain_choice for imagenet and self, but got {}'.format(args.pretrain_choice))
+    #
+    #     do_train_with_center(
+    #         cfg,
+    #         model,
+    #         center_criterion,
+    #         train_loader,
+    #         val_loader,
+    #         optimizer,
+    #         optimizer_center,
+    #         scheduler,      # modify for using self trained model
+    #         loss_func,
+    #         num_query,
+    #         start_epoch,     # add for using self trained model
+    #         args
+    #     )
     else:
         print("Unsupported value for cfg.MODEL.IF_WITH_CENTER {}, only support yes or no!\n".format(args.IF_WITH_CENTER))
 
@@ -74,7 +137,7 @@ def main():
                                                                                     "Loss with center loss has "
                                                                                     "different optimizer "
                                                                                     "configuration")
-    parser.add_argument('--resume', action='store_true', help='resume train')
+    parser.add_argument('--resume', action='store_true',default=False, help='resume train')
     parser.add_argument("opts", help="Modify config options using the command-line", default=None,
                         nargs=argparse.REMAINDER)
 
