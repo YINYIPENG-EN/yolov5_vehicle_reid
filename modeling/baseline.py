@@ -124,7 +124,10 @@ class Baseline(nn.Module):
                               last_stride=last_stride)
         elif model_name == 'resnet50_ibn_a':
             self.base = resnet50_ibn_a(last_stride)
-
+        # 2023.12.01更新，新增mobilenetv2
+        elif model_name == 'mobileNetV2':
+            self.in_planes = 1280
+            self.base = mobilenet_v2(width_mult=1.0)
         if pretrain_choice == 'imagenet':
             # ---------------------------------
             model = self.base  # model
