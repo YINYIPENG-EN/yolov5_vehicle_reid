@@ -3,14 +3,15 @@ import argparse
 import os
 import sys
 import torch
+from torch import optim
 from torch.backends import cudnn
 sys.path.append('.')
 from config import cfg
 from data import make_data_loader
-from engine.trainer import do_train
+from engine.trainer import do_train, do_train_with_center
 from modeling import build_model
-from layers import make_loss
-from solver import make_optimizer, WarmupMultiStepLR
+from layers import make_loss, make_loss_with_center
+from solver import make_optimizer, WarmupMultiStepLR, make_optimizer_with_center
 from loguru import logger
 
 def train(cfg, args):
@@ -35,6 +36,7 @@ def train(cfg, args):
             start_epoch = 0 if not args.resume else eval(args.weights.split('_')[1])
             scheduler = WarmupMultiStepLR(optimizer, cfg.SOLVER.STEPS, cfg.SOLVER.GAMMA, cfg.SOLVER.WARMUP_FACTOR,
                                           cfg.SOLVER.WARMUP_ITERS, cfg.SOLVER.WARMUP_METHOD)
+            # scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=2, gamma=0.94)
         else:
             print('Only support pretrain_choice for imagenet and self, but got {}'.format(args.pretrain_choice))
         # if args.resume:
@@ -53,70 +55,75 @@ def train(cfg, args):
             args
         )
 
-    # elif args.IF_WITH_CENTER:
-    #     print('Train with center loss, the loss type is', cfg.MODEL.METRIC_LOSS_TYPE)
-    #     loss_func, center_criterion = make_loss_with_center(cfg, num_classes, args)  # modified by gu
-    #     optimizer, optimizer_center = make_optimizer_with_center(cfg, model, center_criterion)
-    #
-    #     arguments = {}
-    #     if args.pretrain_choice == 'imagenet':
-    #         start_epoch = eval('weights/resnet50-19c8e357.pth')
-    #         print('Start epoch:', start_epoch)
-    #         path_to_optimizer = args.weights.replace('model', 'optimizer')
-    #         print('Path to the checkpoint of optimizer:', path_to_optimizer)
-    #         path_to_center_param = args.weights.replace('model', 'center_param')
-    #         print('Path to the checkpoint of center_param:', path_to_center_param)
-    #         path_to_optimizer_center = args.weights.replace('model', 'optimizer_center')
-    #         print('Path to the checkpoint of optimizer_center:', path_to_optimizer_center)
-    #
-    #         model_dict = model.state_dict()
-    #         pretrained_dict = torch.load(args.weights)
-    #         pretrained_dict = {k: v for k, v in pretrained_dict.items() if
-    #                            k in model_dict.keys() == pretrained_dict.keys()}
-    #         model_dict.update(pretrained_dict)
-    #         model.load_state_dict(model_dict)
-    #
-    #         optimizer_dict = optimizer.state_dict()
-    #         pretrained_dict_optimizer = torch.load(path_to_optimizer)
-    #         pretrained_dict_optimizer = {k: v for k, v in pretrained_dict_optimizer.items() if
-    #                            k in optimizer_dict.keys() == pretrained_dict_optimizer.keys()}
-    #         optimizer_dict.update(pretrained_dict_optimizer)
-    #         optimizer.load_state_dict(optimizer_dict)
-    #
-    #         center_dict = model.state_dict()
-    #         pretrained_dict_center = torch.load(args.weights)
-    #         pretrained_dict_center = {k: v for k, v in pretrained_dict_center.items() if
-    #                            k in center_dict.keys() == pretrained_dict_center.keys()}
-    #         center_dict.update(pretrained_dict_center)
-    #         center_criterion.load_state_dict(center_dict)
-    #
-    #         optimizer_center.load_state_dict(torch.load(path_to_optimizer_center))
-    #         scheduler = WarmupMultiStepLR(optimizer, cfg.SOLVER.STEPS, cfg.SOLVER.GAMMA, cfg.SOLVER.WARMUP_FACTOR,
-    #                                       cfg.SOLVER.WARMUP_ITERS, cfg.SOLVER.WARMUP_METHOD, start_epoch)
-    #     elif args.pretrain_choice == 'imagenet':
-    #         start_epoch = 0
-    #         scheduler = WarmupMultiStepLR(optimizer, cfg.SOLVER.STEPS, cfg.SOLVER.GAMMA, cfg.SOLVER.WARMUP_FACTOR,
-    #                                       cfg.SOLVER.WARMUP_ITERS, cfg.SOLVER.WARMUP_METHOD)
-    #     else:
-    #         print('Only support pretrain_choice for imagenet and self, but got {}'.format(args.pretrain_choice))
-    #
-    #     do_train_with_center(
-    #         cfg,
-    #         model,
-    #         center_criterion,
-    #         train_loader,
-    #         val_loader,
-    #         optimizer,
-    #         optimizer_center,
-    #         scheduler,      # modify for using self trained model
-    #         loss_func,
-    #         num_query,
-    #         start_epoch,     # add for using self trained model
-    #         args
-    #     )
-    else:
-        print("Unsupported value for cfg.MODEL.IF_WITH_CENTER {}, only support yes or no!\n".format(args.IF_WITH_CENTER))
+    elif args.IF_WITH_CENTER:
+        print('Train with center loss, the loss type is', cfg.MODEL.METRIC_LOSS_TYPE)
+        loss_func, center_criterion = make_loss_with_center(cfg, num_classes, args)  # modified by gu
+        optimizer, optimizer_center = make_optimizer_with_center(cfg, model, center_criterion)
+        start_epoch = 0 if not args.resume else eval(args.weights.split('_')[1])
+        arguments = {}
+        if args.pretrain_choice == 'imagenet':
+            print('Start epoch:', start_epoch)
+            if args.resume:
+                path_to_optimizer = args.weights.replace('model', 'optimizer')
+                print('Path to the checkpoint of optimizer:', path_to_optimizer)
+                path_to_center_param = args.weights.replace('model', 'center_param')
+                print('Path to the checkpoint of center_param:', path_to_center_param)
+                path_to_optimizer_center = args.weights.replace('model', 'optimizer_center')
+                print('Path to the checkpoint of optimizer_center:', path_to_optimizer_center)
+                # model_dict = model.state_dict()
+                # pretrained_dict = torch.load(args.weights)
+                # pretrained_dict = {k: v for k, v in pretrained_dict.items() if
+                #                    k in model_dict.keys() == pretrained_dict.keys()}
+                # model_dict.update(pretrained_dict)
+                # model.load_state_dict(model_dict)
 
+                # optimizer_dict = optimizer.state_dict()
+                pretrained_dict_optimizer = torch.load(path_to_optimizer)
+
+                # pretrained_dict_optimizer = {k: v for k, v in pretrained_dict_optimizer.items() if
+                #                    k in optimizer_dict.keys() == pretrained_dict_optimizer.keys()}
+                # optimizer_dict.update(pretrained_dict_optimizer)
+                optimizer.load_state_dict(pretrained_dict_optimizer.state_dict())
+                for state in optimizer.state.values():
+                    for k, v in state.items():
+                        if torch.is_tensor(v):
+                            state[k] = v.cuda()
+
+                # center_dict = model.state_dict()
+                # pretrained_dict_center = torch.load(args.weights)
+                # pretrained_dict_center = {k: v for k, v in pretrained_dict_center.items() if
+                #                    k in center_dict.keys() == pretrained_dict_center.keys()}
+                # center_dict.update(pretrained_dict_center)
+                # center_criterion.load_state_dict(center_dict)
+                optimizer_center_dict = torch.load(path_to_optimizer_center).state_dict()
+                optimizer_center.load_state_dict(optimizer_center_dict)
+                for state in optimizer_center.state.values():
+                    for k, v in state.items():
+                        if torch.is_tensor(v):
+                            state[k] = v.cuda()
+                center_criterion_dict = torch.load(path_to_center_param).state_dict()
+                center_criterion.load_state_dict(center_criterion_dict)
+        scheduler = WarmupMultiStepLR(optimizer, cfg.SOLVER.STEPS, cfg.SOLVER.GAMMA, cfg.SOLVER.WARMUP_FACTOR,
+                                      cfg.SOLVER.WARMUP_ITERS, cfg.SOLVER.WARMUP_METHOD, start_epoch)
+        
+        # scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=2, gamma=0.94)
+        do_train_with_center(
+            cfg,
+            model,
+            center_criterion,
+            train_loader,
+            val_loader,
+            optimizer,
+            optimizer_center,
+            scheduler,  # modify for using self trained model
+            loss_func,
+            num_query,
+            start_epoch,  # add for using self trained model
+            args
+        )
+    else:
+        print(
+            "Unsupported value for cfg.MODEL.IF_WITH_CENTER {}, only support yes or no!\n".format(args.IF_WITH_CENTER))
 
 def main():
     parser = argparse.ArgumentParser(description="Yolo v5 with vehicle ReID Baseline Training")
@@ -138,6 +145,8 @@ def main():
                                                                                     "different optimizer "
                                                                                     "configuration")
     parser.add_argument('--resume', action='store_true',default=False, help='resume train')
+    parser.add_argument('--freeze', action='store_true', default=False, help='freeze train')
+    parser.add_argument('--freeze_epoch', type=int, default=20, help='freeze train epochs')
     parser.add_argument("opts", help="Modify config options using the command-line", default=None,
                         nargs=argparse.REMAINDER)
 
