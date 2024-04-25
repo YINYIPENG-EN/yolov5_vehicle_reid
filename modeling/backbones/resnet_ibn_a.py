@@ -3,14 +3,12 @@ import torch.nn as nn
 import math
 import torch.utils.model_zoo as model_zoo
 
-
 __all__ = ['ResNet_IBN', 'resnet50_ibn_a', 'resnet101_ibn_a',
            'resnet152_ibn_a']
 
-
 model_urls = {
     # 'resnet50': 'https://download.pytorch.org/models/resnet50-19c8e357.pth',
-    'resnet50':'file:///E:/reid-strong-baseline-master/reid-strong-baseline-master/weights/resnet50-19c8e357.pth',
+    'resnet50': 'file:///E:/reid-strong-baseline-master/reid-strong-baseline-master/weights/resnet50-19c8e357.pth',
     'resnet101': 'https://download.pytorch.org/models/resnet101-5d3b4d8f.pth',
     'resnet152': 'https://download.pytorch.org/models/resnet152-b121ed2d.pth',
 }
@@ -19,12 +17,12 @@ model_urls = {
 class IBN(nn.Module):
     def __init__(self, planes):
         super(IBN, self).__init__()
-        half1 = int(planes/2)
+        half1 = int(planes / 2)
         self.half = half1
         half2 = planes - half1
         self.IN = nn.InstanceNorm2d(half1, affine=True)
         self.BN = nn.BatchNorm2d(half2)
-    
+
     def forward(self, x):
         split = torch.split(x, self.half, 1)
         out1 = self.IN(split[0].contiguous())
@@ -54,7 +52,7 @@ class Bottleneck_IBN(nn.Module):
 
     def forward(self, x):
         residual = x
-        
+
         out = self.conv1(x)
         out = self.bn1(out)
         out = self.relu(out)
@@ -87,9 +85,9 @@ class ResNet_IBN(nn.Module):
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
         self.layer1 = self._make_layer(block, scale, layers[0])
-        self.layer2 = self._make_layer(block, scale*2, layers[1], stride=2)
-        self.layer3 = self._make_layer(block, scale*4, layers[2], stride=2)
-        self.layer4 = self._make_layer(block, scale*8, layers[3], stride=last_stride)
+        self.layer2 = self._make_layer(block, scale * 2, layers[1], stride=2)
+        self.layer3 = self._make_layer(block, scale * 4, layers[2], stride=2)
+        self.layer4 = self._make_layer(block, scale * 8, layers[3], stride=last_stride)
         self.avgpool = nn.AvgPool2d(7)
         self.fc = nn.Linear(scale * 8 * block.expansion, num_classes)
 
@@ -129,7 +127,7 @@ class ResNet_IBN(nn.Module):
         x = self.bn1(x)
         x = self.relu(x)
         x = self.maxpool(x)
-        
+
         x = self.layer1(x)
         x = self.layer2(x)
         x = self.layer3(x)
@@ -149,6 +147,17 @@ class ResNet_IBN(nn.Module):
                 continue
             self.state_dict()[i].copy_(param_dict[i])
 
+    def freeze_backbone(self):
+        backbone = [self.conv1, self.bn1, self.layer1, self.layer2, self.layer3, self.layer4]
+        for m in backbone:
+            for param in m.parameters():
+                param.requires_grad = False
+
+    def Unfreeze_backbone(self):
+        backbone = [self.conv1, self.bn1, self.layer1, self.layer2, self.layer3, self.layer4]
+        for m in backbone:
+            for param in m.parameters():
+                param.requires_grad = True
 
 
 def resnet50_ibn_a(last_stride, pretrained=False, **kwargs):
