@@ -34,6 +34,10 @@ ps:arrow_right:**该训练reid项目vehicle_search与_search项目是独立的�
 
 --resume:resume train
 
+--freeze:freeze train
+
+--freeze_epoch:freeze train epochs
+
 # 环境说明
 
 torch >= 1.7.0
